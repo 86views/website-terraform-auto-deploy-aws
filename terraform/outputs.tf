@@ -34,3 +34,5 @@ output "visitor_counter_table" {
   description = "DynamoDB table for visitor counter"
   value       = aws_dynamodb_table.visitor_counter.name
 }
+
+
