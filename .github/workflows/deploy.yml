@@ -1,5 +1,4 @@
 name: Deploy to AWS
-
 on:
   push:
     branches: [main]
@@ -14,25 +13,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.10.0
-      
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.STATICWEBSITE_GITHUB_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
-      
+
       - name: Terraform Apply
         working-directory: ./terraform
         run: |
           terraform init
           terraform apply -auto-approve \
             -var="contact_email=${{ secrets.CONTACT_EMAIL }}" \
-            -var="github_repository=${{ github.repository }}"
+            -var="github_repository=${{ github.repository }}" \
             -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}"
-      
+
       - name: Get Outputs
         working-directory: ./terraform
         id: tf
@@ -40,17 +39,17 @@ jobs:
           echo "bucket=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
           echo "cf_domain=$(terraform output -raw cloudfront_domain)" >> $GITHUB_OUTPUT
           echo "cf_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
-      
+
       - name: Upload Website
         run: |
           aws s3 sync website/ s3://${{ steps.tf.outputs.bucket }}/ --delete
-      
+
       - name: Clear Cache
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.tf.outputs.cf_id }} \
             --paths "/*"
-      
+
       - name: Done
         run: |
           echo "✅ Live at: https://${{ steps.tf.outputs.cf_domain }}"
