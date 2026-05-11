@@ -156,6 +156,8 @@ module "monitoring" {
   api_gateway_name           = aws_api_gateway_rest_api.static_api.name
   lambda_function_name       = module.lambda_contact.function_name
   cloudfront_distribution_id = module.cloudfront.cloudfront_distribution_id
+  # Only create Slack notifier if webhook URL is provided
+   count = var.slack_webhook_url != "" ? 1 : 0
 }
 
 resource "aws_dynamodb_table" "visitor_counter" {

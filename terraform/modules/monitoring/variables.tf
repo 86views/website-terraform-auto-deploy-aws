@@ -9,6 +9,7 @@ variable "environment" {
 variable "slack_webhook_url" {
   type      = string
   sensitive = true
+  default   = ""        # ← Add this — won't prompt if secret isn't set
 }
 
 variable "api_gateway_name" {

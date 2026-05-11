@@ -31,6 +31,7 @@ jobs:
           terraform apply -auto-approve \
             -var="contact_email=${{ secrets.CONTACT_EMAIL }}" \
             -var="github_repository=${{ github.repository }}"
+            -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}"
       
       - name: Get Outputs
         working-directory: ./terraform
