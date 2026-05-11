@@ -1,0 +1,122 @@
+# ==========================================
+# Terraform
+# ==========================================
+
+# Local .terraform directories
+**/.terraform/*
+.terraform/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Terraform crash logs
+crash.log
+crash.*.log
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Terraform override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform CLI config
+.terraformrc
+terraform.rc
+
+# Terraform plan output
+*.tfplan
+plan.out
+
+# Lock file (KEEP if using teams/modules)
+# Uncomment if you do NOT want to track it
+# .terraform.lock.hcl
+
+# ==========================================
+# AWS
+# ==========================================
+
+# AWS credentials
+.aws/
+aws_credentials
+credentials
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# PEM / Key files
+*.pem
+*.key
+
+# SSM / secrets
+secrets.json
+secret.tfvars
+
+# ==========================================
+# GitHub Actions
+# ==========================================
+
+# GitHub local environment
+.github/*.local.yml
+.github/*.local.yaml
+
+# ==========================================
+# Logs
+# ==========================================
+
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# OS Files
+# ==========================================
+
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# IDE / Editor
+# ==========================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==========================================
+# Node.js
+# ==========================================
+
+node_modules/
+dist/
+build/
+
+# ==========================================
+# Python
+# ==========================================
+
+__pycache__/
+*.pyc
+
+# ==========================================
+# Docker
+# ==========================================
+
+docker-compose.override.yml
+
+# ==========================================
+# Misc
+# ==========================================
+
+tmp/
+temp/
+.cache/

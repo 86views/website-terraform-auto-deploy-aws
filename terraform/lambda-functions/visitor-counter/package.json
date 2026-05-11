@@ -1,0 +1,9 @@
+{
+  "name": "visitor-counter",
+  "version": "1.0.0",
+  "description": "Visitor counter",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1500.0"
+  }
+}

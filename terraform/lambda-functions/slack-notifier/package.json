@@ -1,0 +1,7 @@
+{
+  "name": "slack-notifier",
+  "version": "1.0.0",
+  "description": "Send notifications to Slack",
+  "main": "index.js",
+  "dependencies": {}
+}

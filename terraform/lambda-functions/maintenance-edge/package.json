@@ -1,0 +1,11 @@
+{
+  "name": "maintenance-mode-edge",
+  "version": "1.0.0",
+  "description": "Lambda@Edge for maintenance mode",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  }
+}
