@@ -42,7 +42,9 @@ jobs:
           terraform plan -out=tfplan \
             -var="contact_email=${{ secrets.CONTACT_EMAIL }}" \
             -var="github_repository=${{ github.repository }}" \
-            -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}"
+            -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -var="state_bucket=tf-state-7afc2a05" \
+            -var="lock_table=terraform-locks"
 
       - name: Terraform Apply
         working-directory: ./terraform
