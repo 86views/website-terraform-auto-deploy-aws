@@ -40,6 +40,7 @@ jobs:
         working-directory: ./terraform
         run: |
           terraform plan -out=tfplan \
+            -lock-timeout=60s \
             -var="contact_email=${{ secrets.CONTACT_EMAIL }}" \
             -var="github_repository=${{ github.repository }}" \
             -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
