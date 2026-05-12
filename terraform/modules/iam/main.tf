@@ -1,5 +1,5 @@
 data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
+# data "aws_region" "current" {}
 
 # ─── OIDC Provider (trust GitHub Actions) ───────────────────────────────────
 data "aws_iam_openid_connect_provider" "github" {
@@ -80,7 +80,9 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "s3:ListBucket",
           "s3:GetObject",
           "s3:PutObject",
-          "s3:DeleteObject"
+          "s3:DeleteObject",
+          "s3:GetAccelerateConfiguration", # ✅ added
+          "s3:PutAccelerateConfiguration"  # ✅ added
         ]
         Resource = "*"
       },
@@ -119,6 +121,7 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "lambda:UpdateFunctionCode",
           "lambda:UpdateFunctionConfiguration",
           "lambda:ListFunctions",
+          "lambda:ListVersionsByFunction", # ✅ added
           "lambda:AddPermission",
           "lambda:RemovePermission",
           "lambda:GetPolicy",
@@ -127,19 +130,23 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "lambda:UntagResource",
           "lambda:ListTags",
           "lambda:PublishVersion",
-          "lambda:GetFunctionCodeSigningConfig"
+          "lambda:GetFunctionCodeSigningConfig",
+          "lambda:GetFunctionConfiguration", # ✅ added
+          "lambda:GetAlias",                 # ✅ added
+          "lambda:ListAliases"               # ✅ added
         ]
         Resource = "*"
       },
 
       # DynamoDB
+      # DynamoDB — replace existing statement
       {
         Sid    = "DynamoDBPermissions"
         Effect = "Allow"
         Action = [
           "dynamodb:CreateTable",
           "dynamodb:DeleteTable",
-          "dynamodb:DescribeTable",
+          "dynamodb:DescribeTable", # ✅ added
           "dynamodb:UpdateTable",
           "dynamodb:ListTables",
           "dynamodb:TagResource",
@@ -147,11 +154,12 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "dynamodb:ListTagsOfResource",
           "dynamodb:DescribeTimeToLive",
           "dynamodb:UpdateTimeToLive",
-          "dynamodb:DescribeContinuousBackups"
+          "dynamodb:DescribeContinuousBackups",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem"
         ]
-        # Resource = "*"
-        "Resource": "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/MyTable"
-        
+        Resource = "*"
       },
 
       # API Gateway
@@ -212,7 +220,7 @@ resource "aws_iam_role_policy" "github_actions_policy" {
         ]
         # Resource = "arn:aws:sns:*:${data.aws_caller_identity.current.account_id}:*"
         # Option: use it to scope SNS/DynamoDB resources by region
-       Resource = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
+        Resource = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
       },
 
       # CloudWatch

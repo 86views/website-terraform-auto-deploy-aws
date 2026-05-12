@@ -43,7 +43,7 @@ locals {
 
 # ─── IAM ─────────────────────────────────────────────────────────────────────
 module "iam" {
-  source = "./modules/iam"    # ✅ fixed path
+  source = "./modules/iam" # ✅ fixed path
 
   project_name      = var.project_name
   environment       = var.environment
@@ -57,7 +57,7 @@ module "s3_website" {
   source       = "./modules/s3-website"
   project_name = var.project_name
   environment  = var.environment
-  bucket_name  = local.bucket_name    # ✅ locked name
+  bucket_name  = local.bucket_name # ✅ locked name
 
   cloudfront_distribution_arn = module.cloudfront.cloudfront_distribution_arn
 }
@@ -78,7 +78,7 @@ module "cloudfront" {
 
 # ─── DynamoDB ─────────────────────────────────────────────────────────────────
 resource "aws_dynamodb_table" "visitor_counter" {
-  name         = local.dynamodb_name    # ✅ locked name
+  name         = local.dynamodb_name # ✅ locked name
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "page_id"
 
@@ -94,20 +94,20 @@ resource "aws_dynamodb_table" "visitor_counter" {
   }
 
   lifecycle {
-    prevent_destroy = true    # ✅ hard guard — never accidentally deleted
+    prevent_destroy = true # ✅ hard guard — never accidentally deleted
   }
 }
 
 # ─── Contact Lambda ───────────────────────────────────────────────────────────
 module "lambda_contact" {
   source        = "./modules/lambda"
-  function_name = local.contact_function_name    # ✅ locked name
+  function_name = local.contact_function_name # ✅ locked name
   runtime       = "nodejs20.x"
   handler       = "index.handler"
   source_path   = "${path.module}/lambda-functions/contact-form"
   environment   = var.environment
 
-  enable_ses_access = true    # ✅ contact form needs SES
+  enable_ses_access = true # ✅ contact form needs SES
 
   environment_variables = {
     EMAIL_ADDRESS     = var.contact_email
@@ -118,7 +118,7 @@ module "lambda_contact" {
 # ─── Visitor Counter Lambda ───────────────────────────────────────────────────
 module "lambda_counter" {
   source        = "./modules/lambda"
-  function_name = local.counter_function_name    # ✅ locked name
+  function_name = local.counter_function_name # ✅ locked name
   runtime       = "nodejs20.x"
   handler       = "index.handler"
   source_path   = "${path.module}/lambda-functions/visitor-counter"
@@ -134,7 +134,7 @@ module "lambda_counter" {
 
 # ─── API Gateway ──────────────────────────────────────────────────────────────
 resource "aws_api_gateway_rest_api" "static_api" {
-  name        = local.api_gateway_name    # ✅ locked name
+  name        = local.api_gateway_name # ✅ locked name
   description = "API Gateway for static website"
 
   tags = {
@@ -340,13 +340,13 @@ resource "aws_lambda_permission" "counter" {
 
 # ─── Monitoring (only when Slack webhook provided) ────────────────────────────
 module "monitoring" {
-  count  = var.slack_webhook_url != "" ? 1 : 0    # ✅ skip if no webhook
+  count  = var.slack_webhook_url != "" ? 1 : 0 # ✅ skip if no webhook
   source = "./modules/monitoring"
 
   project_name                 = var.project_name
   environment                  = var.environment
   slack_webhook_url            = var.slack_webhook_url
-  slack_notifier_function_name = local.slack_function_name    # ✅ stable name
+  slack_notifier_function_name = local.slack_function_name # ✅ stable name
   lambda_function_name         = module.lambda_contact.function_name
   cloudfront_distribution_id   = module.cloudfront.cloudfront_distribution_id
 }

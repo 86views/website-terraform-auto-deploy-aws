@@ -33,7 +33,7 @@ variable "slack_webhook_url" {
   description = "Slack webhook URL for monitoring alerts (leave empty to disable)"
   type        = string
   sensitive   = true
-  default     = ""    # ✅ empty string — consistent with count check in main.tf
+  default     = "" # ✅ empty string — consistent with count check in main.tf
 }
 
 variable "state_bucket" {
