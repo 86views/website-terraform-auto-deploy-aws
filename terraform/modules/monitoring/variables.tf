@@ -9,17 +9,20 @@ variable "environment" {
 variable "slack_webhook_url" {
   type      = string
   sensitive = true
-  default   = ""        # ← Add this — won't prompt if secret isn't set
+  default   = ""        # ✅ never blocks pipeline
 }
 
-variable "api_gateway_name" {
-  type = string
+variable "slack_notifier_function_name" {
+  type        = string
+  description = "Stable name for the Slack notifier Lambda — set in root main.tf"
 }
 
 variable "lambda_function_name" {
-  type = string
+  type        = string
+  description = "Lambda function name to monitor for errors"
 }
 
 variable "cloudfront_distribution_id" {
-  type = string
+  type        = string
+  description = "CloudFront distribution ID for 5xx alarm"
 }

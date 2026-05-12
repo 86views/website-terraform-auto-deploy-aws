@@ -1,39 +1,57 @@
 variable "function_name" {
-  description = "Lambda function name"
   type        = string
+  description = "Lambda function name"
 }
 
 variable "runtime" {
-  description = "Lambda runtime"
-  type        = string
-  default     = "nodejs18.x"
+  type    = string
+  default = "nodejs18.x"
 }
 
 variable "handler" {
-  description = "Lambda handler"
-  type        = string
-  default     = "index.handler"
+  type    = string
+  default = "index.handler"
 }
 
 variable "source_path" {
-  description = "Path to Lambda source code"
   type        = string
+  description = "Path to Lambda source code directory"
 }
 
 variable "environment_variables" {
-  description = "Environment variables"
-  type        = map(string)
-  default     = {}
+  type    = map(string)
+  default = {}
 }
 
 variable "timeout" {
-  description = "Lambda timeout in seconds"
-  type        = number
-  default     = 10
+  type    = number
+  default = 10
 }
 
 variable "memory_size" {
-  description = "Lambda memory size in MB"
-  type        = number
-  default     = 128
+  type    = number
+  default = 128
+}
+
+variable "environment" {
+  type        = string
+  description = "Environment (dev, prod)"
+}
+
+variable "dynamodb_table_arn" {
+  description = "DynamoDB table ARN (required if enable_dynamodb_access = true)"
+  type        = string
+  default     = null
+}
+
+variable "enable_dynamodb_access" {
+  description = "Enable DynamoDB permissions for this Lambda"
+  type        = bool
+  default     = false
+}
+
+variable "enable_ses_access" {
+  description = "Enable SES permissions for this Lambda (contact form)"  # ✅ new
+  type        = bool
+  default     = false
 }

@@ -1,5 +1,5 @@
 variable "bucket_name" {
-  description = "S3 bucket name"
+  description = "S3 bucket name (must be globally unique)"
   type        = string
 }
 
@@ -9,23 +9,11 @@ variable "project_name" {
 }
 
 variable "environment" {
-  description = "Environment"
+  description = "Environment (dev, prod)"
   type        = string
 }
-
-variable "domain_name" {
-  description = "Custom domain name"
-  type        = string
-  default     = ""
-}
-
-variable "cloudfront_origin_access_identity_arn" {
-  description = "CloudFront OAI ARN"
-  type        = string
-  default     = ""
-}
-
 
 variable "cloudfront_distribution_arn" {
-  type = string
+  description = "CloudFront distribution ARN for OAC access"
+  type        = string
 }

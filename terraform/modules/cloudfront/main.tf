@@ -6,12 +6,14 @@ resource "aws_cloudfront_origin_access_control" "oac" {
   signing_protocol                  = "sigv4"
 }
 
+locals {
+  origin_id = "s3-origin"    # ✅ fixed — never changes
+}
+
 resource "aws_cloudfront_distribution" "s3_distribution" {
-
   origin {
-    domain_name = var.s3_bucket_domain
-    origin_id   = "S3-${var.project_name}"
-
+    domain_name              = var.s3_bucket_domain
+    origin_id                = local.origin_id
     origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
   }
 
@@ -21,28 +23,17 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   price_class         = "PriceClass_100"
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${var.project_name}"
-
-    forwarded_values {
-      query_string = false
-
-      cookies {
-        forward = "none"
-      }
-    }
-
+    target_origin_id       = local.origin_id
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl     = 0
-    default_ttl = 3600
-    max_ttl     = 86400
-    compress    = true
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
+    compress               = true
   }
 
+  # ✅ All error responses via variable — no hardcoded duplicates
   dynamic "custom_error_response" {
     for_each = var.custom_error_responses
-
     content {
       error_code         = custom_error_response.value.error_code
       response_page_path = custom_error_response.value.response_page_path
@@ -63,5 +54,6 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   tags = {
     Name        = "${var.project_name}-cloudfront-${var.environment}"
     Environment = var.environment
+    ManagedBy   = "terraform"
   }
 }

@@ -16,6 +16,8 @@ crash.*.log
 
 # Sensitive variable files
 *.tfvars
+ terraform.tfvars
+ *.tfvars
 *.tfvars.json
 
 # Terraform override files

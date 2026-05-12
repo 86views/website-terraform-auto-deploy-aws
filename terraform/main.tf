@@ -21,7 +21,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-# --- Data Sources ---
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
@@ -31,168 +30,121 @@ resource "random_string" "suffix" {
   upper   = false
 }
 
-# --- GitHub OIDC Auth ---
-
-data "aws_iam_openid_connect_provider" "github" {
-  url = "https://token.actions.githubusercontent.com"
+# ─── Locked Resource Names ────────────────────────────────────────────────────
+# Change project_name freely — these names never change
+locals {
+  bucket_name           = "static-website-${var.environment}-${random_string.suffix.result}"
+  dynamodb_name         = "static-website-visitors-${var.environment}"
+  contact_function_name = "static-website-contact-${var.environment}"
+  counter_function_name = "static-website-counter-${var.environment}"
+  slack_function_name   = "static-website-slack-notifier-${var.environment}"
+  api_gateway_name      = "static-website-api-${var.environment}"
 }
 
-resource "aws_iam_role" "github_actions_role" {
-  count = var.github_repository != "" ? 1 : 0
+# ─── IAM ─────────────────────────────────────────────────────────────────────
+module "iam" {
+  source = "./modules/iam"    # ✅ fixed path
 
-  name = "${var.project_name}-github-actions-role-${var.environment}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-
-    Statement = [{
-      Action = "sts:AssumeRoleWithWebIdentity"
-      Effect = "Allow"
-
-      Principal = {
-        Federated = data.aws_iam_openid_connect_provider.github.arn
-      }
-
-      Condition = {
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:*"
-        }
-
-        StringEquals = {
-          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-        }
-      }
-    }]
-  })
+  project_name      = var.project_name
+  environment       = var.environment
+  github_repository = var.github_repository
+  state_bucket      = var.state_bucket
+  lock_table        = var.lock_table
 }
 
-resource "aws_iam_role_policy" "github_actions_infrastructure" {
-  count = var.github_repository != "" ? 1 : 0
-
-  name = "infrastructure-management"
-  role = aws_iam_role.github_actions_role[0].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-
-    Statement = [
-      {
-        Effect = "Allow"
-
-        Action = [
-          "s3:*",
-          "cloudfront:*",
-          "lambda:*",
-          "apigateway:*",
-          "dynamodb:*",
-          "ses:*",
-          "iam:GetRole",
-          "iam:PassRole",
-          "acm:*",
-          "route53:*"
-        ]
-
-        Resource = "*"
-      },
-
-      {
-        Effect = "Allow"
-
-        Action = [
-          "s3:ListBucket",
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-
-        Resource = [
-          "arn:aws:s3:::tf-state-7afc2a05",
-          "arn:aws:s3:::tf-state-7afc2a05/*"
-        ]
-      }
-    ]
-  })
-}
-
-# --- Application Modules ---
+# ─── S3 ──────────────────────────────────────────────────────────────────────
 module "s3_website" {
   source       = "./modules/s3-website"
   project_name = var.project_name
   environment  = var.environment
-  bucket_name  = "${var.project_name}-${var.environment}-${random_string.suffix.result}"
-  domain_name  = var.domain_name
+  bucket_name  = local.bucket_name    # ✅ locked name
+
   cloudfront_distribution_arn = module.cloudfront.cloudfront_distribution_arn
 }
 
-module "lambda_contact" {
-  source        = "./modules/lambda"
-  function_name = "${var.project_name}-contact-form-${var.environment}"
-  runtime       = "nodejs20.x"
-  handler       = "index.handler"
-  source_path   = "${path.module}/lambda-functions/contact-form"
-  environment_variables = {
-    EMAIL_ADDRESS     = var.contact_email
-    SLACK_WEBHOOK_URL = var.enable_slack_notifications ? var.slack_webhook_url : ""
-  }
-}
-
-
-
-module "lambda_counter" {
-  source                = "./modules/lambda"
-  function_name         = "${var.project_name}-visitor-counter-${var.environment}"
-  runtime               = "nodejs20.x"
-  handler               = "index.handler"
-  source_path           = "${path.module}/lambda-functions/visitor-counter"
-  environment_variables = { TABLE_NAME = aws_dynamodb_table.visitor_counter.name }
-}
-
-module "monitoring" {
-  source = "./modules/monitoring"
-
-  project_name               = var.project_name
-  environment                = var.environment
-  slack_webhook_url          = var.slack_webhook_url
-  api_gateway_name           = aws_api_gateway_rest_api.static_api.name
-  lambda_function_name       = module.lambda_contact.function_name
-  cloudfront_distribution_id = module.cloudfront.cloudfront_distribution_id
- 
-   count = var.slack_webhook_url != "" ? 1 : 0
-}
-
-resource "aws_dynamodb_table" "visitor_counter" {
-  name         = "${var.project_name}-visitors-${var.environment}"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "page_id"
-  attribute {
-    name = "page_id"
-    type = "S"
-  }
-}
-
+# ─── CloudFront ───────────────────────────────────────────────────────────────
 module "cloudfront" {
   source           = "./modules/cloudfront"
   project_name     = var.project_name
   environment      = var.environment
-  domain_name      = var.domain_name
-  route53_zone_id  = var.route53_zone_id
-  s3_bucket_id     = module.s3_website.bucket_id
-  s3_bucket_arn    = module.s3_website.bucket_arn
-  s3_bucket_domain = module.s3_website.bucket_domain
+  s3_bucket_domain = module.s3_website.bucket_regional_domain
 
+  # SPA error handling — passed explicitly, no hardcoded duplicates in module
   custom_error_responses = [
-    { error_code = 404, response_page_path = "/error.html", response_code = 404 },
-    { error_code = 403, response_page_path = "/error.html", response_code = 404 }
+    { error_code = 403, response_code = 200, response_page_path = "/index.html" },
+    { error_code = 404, response_code = 200, response_page_path = "/index.html" }
   ]
 }
 
-# --- API Gateway Configuration ---
-resource "aws_api_gateway_rest_api" "static_api" {
-  name        = "${var.project_name}-api-${var.environment}"
-  description = "API Gateway for static website"
+# ─── DynamoDB ─────────────────────────────────────────────────────────────────
+resource "aws_dynamodb_table" "visitor_counter" {
+  name         = local.dynamodb_name    # ✅ locked name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "page_id"
+
+  attribute {
+    name = "page_id"
+    type = "S"
+  }
+
+  tags = {
+    Name        = local.dynamodb_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+
+  lifecycle {
+    prevent_destroy = true    # ✅ hard guard — never accidentally deleted
+  }
 }
 
-# Contact Endpoint
+# ─── Contact Lambda ───────────────────────────────────────────────────────────
+module "lambda_contact" {
+  source        = "./modules/lambda"
+  function_name = local.contact_function_name    # ✅ locked name
+  runtime       = "nodejs20.x"
+  handler       = "index.handler"
+  source_path   = "${path.module}/lambda-functions/contact-form"
+  environment   = var.environment
+
+  enable_ses_access = true    # ✅ contact form needs SES
+
+  environment_variables = {
+    EMAIL_ADDRESS     = var.contact_email
+    SLACK_WEBHOOK_URL = var.slack_webhook_url
+  }
+}
+
+# ─── Visitor Counter Lambda ───────────────────────────────────────────────────
+module "lambda_counter" {
+  source        = "./modules/lambda"
+  function_name = local.counter_function_name    # ✅ locked name
+  runtime       = "nodejs20.x"
+  handler       = "index.handler"
+  source_path   = "${path.module}/lambda-functions/visitor-counter"
+  environment   = var.environment
+
+  enable_dynamodb_access = true
+  dynamodb_table_arn     = aws_dynamodb_table.visitor_counter.arn
+
+  environment_variables = {
+    TABLE_NAME = aws_dynamodb_table.visitor_counter.name
+  }
+}
+
+# ─── API Gateway ──────────────────────────────────────────────────────────────
+resource "aws_api_gateway_rest_api" "static_api" {
+  name        = local.api_gateway_name    # ✅ locked name
+  description = "API Gateway for static website"
+
+  tags = {
+    Name        = local.api_gateway_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+# Contact resource
 resource "aws_api_gateway_resource" "contact" {
   rest_api_id = aws_api_gateway_rest_api.static_api.id
   parent_id   = aws_api_gateway_rest_api.static_api.root_resource_id
@@ -215,7 +167,53 @@ resource "aws_api_gateway_integration" "contact_lambda" {
   uri                     = module.lambda_contact.function_invoke_arn
 }
 
-# Counter Endpoint
+# ✅ CORS for contact
+resource "aws_api_gateway_method" "contact_options" {
+  rest_api_id   = aws_api_gateway_rest_api.static_api.id
+  resource_id   = aws_api_gateway_resource.contact.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "contact_options" {
+  rest_api_id = aws_api_gateway_rest_api.static_api.id
+  resource_id = aws_api_gateway_resource.contact.id
+  http_method = aws_api_gateway_method.contact_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "contact_options" {
+  rest_api_id = aws_api_gateway_rest_api.static_api.id
+  resource_id = aws_api_gateway_resource.contact.id
+  http_method = aws_api_gateway_method.contact_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "contact_options" {
+  rest_api_id = aws_api_gateway_rest_api.static_api.id
+  resource_id = aws_api_gateway_resource.contact.id
+  http_method = aws_api_gateway_method.contact_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+
+  depends_on = [aws_api_gateway_integration.contact_options]
+}
+
+# Counter resource
 resource "aws_api_gateway_resource" "counter" {
   rest_api_id = aws_api_gateway_rest_api.static_api.id
   parent_id   = aws_api_gateway_rest_api.static_api.root_resource_id
@@ -238,7 +236,53 @@ resource "aws_api_gateway_integration" "counter_lambda" {
   uri                     = module.lambda_counter.function_invoke_arn
 }
 
-# Deployment & Stage (Unique Declarations)
+# ✅ CORS for counter
+resource "aws_api_gateway_method" "counter_options" {
+  rest_api_id   = aws_api_gateway_rest_api.static_api.id
+  resource_id   = aws_api_gateway_resource.counter.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "counter_options" {
+  rest_api_id = aws_api_gateway_rest_api.static_api.id
+  resource_id = aws_api_gateway_resource.counter.id
+  http_method = aws_api_gateway_method.counter_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "counter_options" {
+  rest_api_id = aws_api_gateway_rest_api.static_api.id
+  resource_id = aws_api_gateway_resource.counter.id
+  http_method = aws_api_gateway_method.counter_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "counter_options" {
+  rest_api_id = aws_api_gateway_rest_api.static_api.id
+  resource_id = aws_api_gateway_resource.counter.id
+  http_method = aws_api_gateway_method.counter_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+
+  depends_on = [aws_api_gateway_integration.counter_options]
+}
+
+# Deployment
 resource "aws_api_gateway_deployment" "static_api" {
   rest_api_id = aws_api_gateway_rest_api.static_api.id
 
@@ -255,7 +299,9 @@ resource "aws_api_gateway_deployment" "static_api" {
 
   depends_on = [
     aws_api_gateway_integration.contact_lambda,
-    aws_api_gateway_integration.counter_lambda
+    aws_api_gateway_integration.counter_lambda,
+    aws_api_gateway_integration_response.contact_options,
+    aws_api_gateway_integration_response.counter_options
   ]
 
   lifecycle {
@@ -267,21 +313,40 @@ resource "aws_api_gateway_stage" "static_api_stage" {
   stage_name    = var.environment
   rest_api_id   = aws_api_gateway_rest_api.static_api.id
   deployment_id = aws_api_gateway_deployment.static_api.id
+
+  tags = {
+    Name        = "${local.api_gateway_name}-${var.environment}"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
 }
 
-# --- Lambda Permissions ---
-resource "aws_lambda_permission" "api_gateway_contact" {
-  statement_id  = "AllowAPIGatewayInvoke"
+# ─── Lambda Permissions ───────────────────────────────────────────────────────
+resource "aws_lambda_permission" "contact" {
+  statement_id  = "AllowContactInvoke"
   action        = "lambda:InvokeFunction"
   function_name = module.lambda_contact.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.static_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "api_gateway_counter" {
-  statement_id  = "AllowAPIGatewayInvoke"
+resource "aws_lambda_permission" "counter" {
+  statement_id  = "AllowCounterInvoke"
   action        = "lambda:InvokeFunction"
   function_name = module.lambda_counter.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.static_api.execution_arn}/*/*"
+}
+
+# ─── Monitoring (only when Slack webhook provided) ────────────────────────────
+module "monitoring" {
+  count  = var.slack_webhook_url != "" ? 1 : 0    # ✅ skip if no webhook
+  source = "./modules/monitoring"
+
+  project_name                 = var.project_name
+  environment                  = var.environment
+  slack_webhook_url            = var.slack_webhook_url
+  slack_notifier_function_name = local.slack_function_name    # ✅ stable name
+  lambda_function_name         = module.lambda_contact.function_name
+  cloudfront_distribution_id   = module.cloudfront.cloudfront_distribution_id
 }

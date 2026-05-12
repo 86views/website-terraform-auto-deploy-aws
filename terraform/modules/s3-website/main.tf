@@ -3,35 +3,44 @@ resource "aws_s3_bucket" "website" {
 
   tags = {
     Name        = var.bucket_name
+    Project     = var.project_name
     Environment = var.environment
+    ManagedBy   = "terraform" 
   }
 }
 
-resource "aws_s3_bucket_website_configuration" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  error_document {
-    key = "error.html"
-  }
-}
-
+# ----------------------------
+# Public access MUST be blocked (secure setup)
+# ----------------------------
 resource "aws_s3_bucket_public_access_block" "website" {
   bucket = aws_s3_bucket.website.id
 
   block_public_acls       = true
   block_public_policy     = true
-  ignore_public_acls       = true
-  restrict_public_buckets  = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-# ✅ OAC Bucket Policy (ONLY THIS ONE)
+# ----------------------------
+# Versioning (safe + useful for rollback)
+# ----------------------------
+resource "aws_s3_bucket_versioning" "website" {
+  bucket = aws_s3_bucket.website.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# ----------------------------
+# CloudFront OAC Policy (SECURE ACCESS ONLY)
+# ----------------------------
 data "aws_iam_policy_document" "website" {
 
   statement {
+    sid     = "AllowCloudFrontAccess"
+    effect  = "Allow"
+
     actions = ["s3:GetObject"]
 
     resources = [
@@ -54,12 +63,6 @@ data "aws_iam_policy_document" "website" {
 resource "aws_s3_bucket_policy" "website" {
   bucket = aws_s3_bucket.website.id
   policy = data.aws_iam_policy_document.website.json
-}
 
-resource "aws_s3_bucket_versioning" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  versioning_configuration {
-    status = "Enabled"
-  }
+  depends_on = [aws_s3_bucket_public_access_block.website]
 }

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Gallery</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f0f2f5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      padding: 2rem 1.5rem;
+    }
+
+    .gallery {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: 500;
+      font-size: 2rem;
+      color: #1a1a2e;
+      margin-bottom: 2rem;
+      letter-spacing: -0.5px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+    }
+
+    .card img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card-info {
+      padding: 0.75rem 1rem 1rem;
+    }
+
+    .card-info h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .card-info p {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 40px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    .close:hover {
+      color: #ccc;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 1rem;
+      }
+      .grid {
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="gallery">
+    <h1>Gallery</h1>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div id="lightbox" class="lightbox">
+    <span class="close">&times;</span>
+    <img id="lightboxImg" src="" alt="">
+  </div>
+
+  <script>
+    const images = [
+      { src: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&fit=crop", title: "Mountain Lake", desc: "Serene alpine view" },
+      { src: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&fit=crop", title: "Beach Sunset", desc: "Golden hour waves" },
+      { src: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200&fit=crop", title: "City Architecture", desc: "Modern buildings" },
+      { src: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&fit=crop", title: "Forest Path", desc: "Green canopy" },
+      { src: "https://images.unsplash.com/photo-1509316785289-025f5b84689d?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1509316785289-025f5b84689d?w=1200&fit=crop", title: "Desert Dunes", desc: "Endless sand" },
+      { src: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1200&fit=crop", title: "City Night", desc: "Neon lights" },
+      { src: "https://images.unsplash.com/photo-1541364983171-a8ba01e95cfc?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1541364983171-a8ba01e95cfc?w=1200&fit=crop", title: "Aurora", desc: "Northern lights" },
+      { src: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=600&h=450&fit=crop", full: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=1200&fit=crop", title: "Abstract Art", desc: "Colorful waves" }
+    ];
+
+    const grid = document.getElementById('grid');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    const closeBtn = document.querySelector('.close');
+
+    function renderGallery() {
+      images.forEach((img, index) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${img.src}" alt="${img.title}" loading="lazy">
+          <div class="card-info">
+            <h3>${img.title}</h3>
+            <p>${img.desc}</p>
+          </div>
+        `;
+        card.addEventListener('click', () => openLightbox(index));
+        grid.appendChild(card);
+      });
+    }
+
+    function openLightbox(index) {
+      lightboxImg.src = images[index].full;
+      lightbox.classList.add('active');
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('active');
+    }
+
+    closeBtn.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+        closeLightbox();
+      }
+    });
+
+    renderGallery();
+  </script>
+</body>
+</html>

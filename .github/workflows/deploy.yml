@@ -1,4 +1,5 @@
 name: Deploy to AWS
+
 on:
   push:
     branches: [main]
@@ -11,6 +12,8 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,28 +26,44 @@ jobs:
           role-to-assume: ${{ secrets.STATICWEBSITE_GITHUB_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Terraform Apply
+      - name: Terraform Validate
         working-directory: ./terraform
         run: |
-          terraform init
-          terraform apply -auto-approve \
+          terraform init -backend=false
+          terraform validate
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: |
+          terraform plan -out=tfplan \
             -var="contact_email=${{ secrets.CONTACT_EMAIL }}" \
             -var="github_repository=${{ github.repository }}" \
             -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}"
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
 
       - name: Get Outputs
         working-directory: ./terraform
         id: tf
         run: |
-          echo "bucket=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
-          echo "cf_domain=$(terraform output -raw cloudfront_domain)" >> $GITHUB_OUTPUT
-          echo "cf_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "bucket=$(terraform output -raw s3_bucket_name)"              >> $GITHUB_OUTPUT
+          echo "cf_domain=$(terraform output -raw cloudfront_domain)"        >> $GITHUB_OUTPUT
+          echo "cf_id=$(terraform output -raw cloudfront_distribution_id)"   >> $GITHUB_OUTPUT
+          echo "role_arn=$(terraform output -raw github_actions_role_arn)"   >> $GITHUB_OUTPUT
 
       - name: Upload Website
         run: |
-          aws s3 sync website/ s3://${{ steps.tf.outputs.bucket }}/ --delete
+          aws s3 sync website/ s3://${{ steps.tf.outputs.bucket }}/ \
+            --delete \
+            --cache-control "max-age=86400"
 
-      - name: Clear Cache
+      - name: Invalidate CloudFront Cache
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.tf.outputs.cf_id }} \
@@ -53,3 +72,4 @@ jobs:
       - name: Done
         run: |
           echo "✅ Live at: https://${{ steps.tf.outputs.cf_domain }}"
+          echo "🔑 GitHub Role ARN: ${{ steps.tf.outputs.role_arn }}"

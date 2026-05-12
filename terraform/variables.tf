@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "project_name" {
-  description = "Project name"
+  description = "Project name — used for tagging only, not resource naming"
   type        = string
   default     = "static-website"
 }
@@ -17,45 +17,50 @@ variable "environment" {
 }
 
 variable "github_repository" {
-  description = "GitHub repository (format: owner/repo)"
+  description = "GitHub repository in format owner/repo (e.g. myorg/myrepo)"
   type        = string
-  default     = ""
-}
-
-variable "domain_name" {
-  description = "Custom domain name (optional)"
-  type        = string
-  default     = ""
-}
-
-variable "route53_zone_id" {
-  description = "Route53 zone ID (required for custom domain)"
-  type        = string
-  default     = ""
-}
-
-variable "acm_certificate_arn" {
-  description = "ACM certificate ARN (optional, for custom domain)"
-  type        = string
-  default     = ""
+  # ✅ no default — must be passed explicitly
 }
 
 variable "contact_email" {
-  description = "Email address for contact form submissions"
+  description = "Email address for contact form notifications"
   type        = string
   sensitive   = true
-  default     = ""
+  # ✅ no default — must be passed explicitly
 }
 
 variable "slack_webhook_url" {
-  type      = string
-  sensitive = true
-  default   = ""     
+  description = "Slack webhook URL for monitoring alerts (leave empty to disable)"
+  type        = string
+  sensitive   = true
+  default     = ""    # ✅ empty string — consistent with count check in main.tf
 }
 
+variable "state_bucket" {
+  description = "S3 bucket name for Terraform state"
+  type        = string
+}
 
-variable "enable_slack_notifications" {
-  description = "Enable Slack notifications"
-  type        = bool
-  default     = false
+variable "lock_table" {
+  description = "DynamoDB table name for Terraform state locking"
+  type        = string
+}
+
+# ─── Optional / Future Use ────────────────────────────────────────────────────
+variable "domain_name" {
+  description = "Custom domain name (optional — leave null to use CloudFront default)"
+  type        = string
+  default     = null
+}
+
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID (required if domain_name is set)"
+  type        = string
+  default     = null
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN (required if domain_name is set)"
+  type        = string
+  default     = null
 }
