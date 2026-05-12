@@ -216,10 +216,11 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "sns:Unsubscribe",
           "sns:TagResource",
           "sns:UntagResource",
-          "sns:ListTagsForResource"
+          "sns:ListTagsForResource",
+          "sns:GetSubscriptionAttributes", 
         ]
         # Resource = "arn:aws:sns:*:${data.aws_caller_identity.current.account_id}:*"
-        # Option: use it to scope SNS/DynamoDB resources by region
+        
         Resource = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
       },
 
@@ -239,7 +240,10 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "logs:DeleteRetentionPolicy",
           "logs:ListTagsLogGroup",
           "logs:TagLogGroup",
-          "logs:UntagLogGroup"
+          "logs:UntagLogGroup",
+          "cloudwatch:ListTagsForResource",   
+          "cloudwatch:TagResource",          
+          "cloudwatch:UntagResource",
         ]
         Resource = "*"
       },
