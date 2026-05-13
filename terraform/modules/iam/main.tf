@@ -217,10 +217,10 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "sns:TagResource",
           "sns:UntagResource",
           "sns:ListTagsForResource",
-          "sns:GetSubscriptionAttributes", 
+          "sns:GetSubscriptionAttributes",
         ]
         # Resource = "arn:aws:sns:*:${data.aws_caller_identity.current.account_id}:*"
-        
+
         Resource = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
       },
 
@@ -241,8 +241,8 @@ resource "aws_iam_role_policy" "github_actions_policy" {
           "logs:ListTagsLogGroup",
           "logs:TagLogGroup",
           "logs:UntagLogGroup",
-          "cloudwatch:ListTagsForResource",   
-          "cloudwatch:TagResource",          
+          "cloudwatch:ListTagsForResource",
+          "cloudwatch:TagResource",
           "cloudwatch:UntagResource",
         ]
         Resource = "*"
@@ -254,7 +254,11 @@ resource "aws_iam_role_policy" "github_actions_policy" {
         Effect = "Allow"
         Action = [
           "ses:SendEmail",
-          "ses:SendRawEmail"
+          "ses:SendRawEmail",
+          "ses:VerifyEmailIdentity",               # ✅ added
+          "ses:GetIdentityVerificationAttributes", # ✅ added
+          "ses:DeleteIdentity",                    # ✅ added
+          "ses:ListIdentities"                     # ✅ added
         ]
         Resource = "*"
       },
