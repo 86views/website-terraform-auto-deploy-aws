@@ -55,6 +55,8 @@ jobs:
         working-directory: ./terraform
         id: tf
         run: |
+          API_URL=$(terraform output -raw api_gateway_url)
+          sed -i "s|API_BASE_URL_PLACEHOLDER|${API_URL}|g" ../website/assets/js/main.js
           echo "bucket=$(terraform output -raw s3_bucket_name)"              >> $GITHUB_OUTPUT
           echo "cf_domain=$(terraform output -raw cloudfront_domain)"        >> $GITHUB_OUTPUT
           echo "cf_id=$(terraform output -raw cloudfront_distribution_id)"   >> $GITHUB_OUTPUT

@@ -350,3 +350,10 @@ module "monitoring" {
   lambda_function_name         = module.lambda_contact.function_name
   cloudfront_distribution_id   = module.cloudfront.cloudfront_distribution_id
 }
+
+
+resource "aws_ses_email_identity" "contact" {
+  email = var.contact_email
+
+  
+}

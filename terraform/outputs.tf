@@ -38,3 +38,14 @@ output "github_actions_role_arn" {
   description = "IAM role ARN for GitHub Actions — save this as STATICWEBSITE_GITHUB_ROLE_ARN secret"
   value       = module.iam.github_actions_role_arn
 }
+
+
+output "sns_topic_arn" {
+  description = "SNS topic ARN for monitoring alerts"
+  value       = length(module.monitoring) > 0 ? module.monitoring[0].sns_topic_arn : null
+}
+
+output "ses_verification_status" {
+  description = "SES email identity ARN — verify email in inbox after first apply"
+  value       = aws_ses_email_identity.contact.arn
+}
