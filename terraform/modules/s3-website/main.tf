@@ -1,6 +1,8 @@
 resource "aws_s3_bucket" "website" {
   bucket = var.bucket_name
 
+  force_destroy = true
+
   tags = {
     Name        = var.bucket_name
     Project     = var.project_name

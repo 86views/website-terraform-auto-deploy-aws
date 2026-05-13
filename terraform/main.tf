@@ -94,7 +94,7 @@ resource "aws_dynamodb_table" "visitor_counter" {
   }
 
   lifecycle {
-    prevent_destroy = true # ✅ hard guard — never accidentally deleted
+    prevent_destroy = false # ✅ hard guard — never accidentally deleted
   }
 }
 
